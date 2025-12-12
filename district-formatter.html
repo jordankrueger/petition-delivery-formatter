@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>District-Sorted Petition PDF Generator</title>
+    <script src="https://unpkg.com/jspdf@3.0.4/dist/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .privacy-notice {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .privacy-notice strong {
+            color: #155724;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 1.2em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .district-type-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .district-type-selection label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .district-type-selection label:hover {
+            border-color: #3498db;
+            background: #e8f4fc;
+        }
+        .district-type-selection input[type="radio"]:checked + span {
+            font-weight: 600;
+            color: #2980b9;
+        }
+        .district-type-selection label:has(input:checked) {
+            border-color: #3498db;
+            background: #e8f4fc;
+        }
+        .drop-zone {
+            border: 3px dashed #bdc3c7;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: #3498db;
+            background: #e8f4fc;
+        }
+        .drop-zone p {
+            margin: 0;
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+        .drop-zone .icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .mapping-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .mapping-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .mapping-item.full-width {
+            grid-column: 1 / -1;
+        }
+        .mapping-item label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+        .mapping-item select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1em;
+            background: white;
+        }
+        .mapping-item select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        .auto-detected {
+            font-size: 0.8em;
+            color: #27ae60;
+            font-weight: normal;
+        }
+        .not-detected {
+            font-size: 0.8em;
+            color: #e67e22;
+            font-weight: normal;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .preview {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .preview h3 {
+            margin: 0 0 10px 0;
+            font-size: 1em;
+            color: #2c3e50;
+        }
+        .preview-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        .stat {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            font-size: 0.85em;
+            color: #7f8c8d;
+        }
+        .district-preview {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .district-preview-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .district-preview-item:last-child {
+            border-bottom: none;
+        }
+        .hidden {
+            display: none;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-top: 10px;
+            color: #856404;
+        }
+        .info-text {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 District-Sorted Petition PDF Generator</h1>
+    
+    <div class="privacy-notice">
+        <strong>🔒 Privacy First:</strong> Your data never leaves your computer. All processing happens in your browser.
+    </div>
+
+    <div class="card">
+        <h2>Step 1: Select District Type</h2>
+        <div class="district-type-selection">
+            <label>
+                <input type="radio" name="districtType" value="us_house" checked>
+                <span>U.S. House</span>
+            </label>
+            <label>
+                <input type="radio" name="districtType" value="us_senate">
+                <span>U.S. Senate</span>
+            </label>
+            <label>
+                <input type="radio" name="districtType" value="state_house">
+                <span>State House</span>
+            </label>
+            <label>
+                <input type="radio" name="districtType" value="state_senate">
+                <span>State Senate</span>
+            </label>
+        </div>
+        <p class="info-text">For U.S. Senate, signers will be grouped by state. For other types, signers will be grouped by district.</p>
+    </div>
+
+    <div class="card">
+        <h2>Step 2: Upload CSV File</h2>
+        <div class="drop-zone" id="dropZone">
+            <div class="icon">📁</div>
+            <p>Drop your CSV file here, or click to browse</p>
+        </div>
+        <input type="file" id="fileInput" accept=".csv">
+    </div>
+
+    <div class="card hidden" id="mappingCard">
+        <h2>Step 3: Verify Column Mapping</h2>
+        <div class="mapping-grid">
+            <div class="mapping-item">
+                <label for="firstNameCol">First Name <span id="firstNameStatus"></span></label>
+                <select id="firstNameCol"></select>
+            </div>
+            <div class="mapping-item">
+                <label for="lastNameCol">Last Name <span id="lastNameStatus"></span></label>
+                <select id="lastNameCol"></select>
+            </div>
+            <div class="mapping-item">
+                <label for="cityCol">City <span id="cityStatus"></span></label>
+                <select id="cityCol"></select>
+            </div>
+            <div class="mapping-item">
+                <label for="stateCol">State <span id="stateStatus"></span></label>
+                <select id="stateCol"></select>
+            </div>
+            <div class="mapping-item">
+                <label for="zipCol">ZIP <span id="zipStatus"></span></label>
+                <select id="zipCol"></select>
+            </div>
+            <div class="mapping-item" id="districtColWrapper">
+                <label for="districtCol">District <span id="districtStatus"></span></label>
+                <select id="districtCol"></select>
+            </div>
+        </div>
+        <div id="districtWarning" class="warning hidden">
+            ⚠️ No district column detected. Please select the column containing district information, or signers will be grouped as "Unknown District."
+        </div>
+    </div>
+
+    <div class="card hidden" id="previewCard">
+        <h2>Step 4: Preview & Generate</h2>
+        <div class="preview">
+            <h3>Data Summary</h3>
+            <div class="preview-stats">
+                <div class="stat">
+                    <div class="stat-value" id="totalSigners">0</div>
+                    <div class="stat-label">Total Signers</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="totalDistricts">0</div>
+                    <div class="stat-label" id="districtLabel">Districts</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="unknownCount">0</div>
+                    <div class="stat-label">Unknown District</div>
+                </div>
+            </div>
+            <div class="district-preview" id="districtPreview"></div>
+        </div>
+        <button id="generateBtn" disabled>Generate PDF</button>
+    </div>
+
+    <script>
+        // State
+        let csvData = [];
+        let headers = [];
+        let columnMapping = {};
+
+        // State name mapping
+        const stateNames = {
+            'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
+            'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
+            'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 'ID': 'Idaho',
+            'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 'KS': 'Kansas',
+            'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+            'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi',
+            'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada',
+            'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 'NY': 'New York',
+            'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 'OK': 'Oklahoma',
+            'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+            'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah',
+            'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia',
+            'WI': 'Wisconsin', 'WY': 'Wyoming', 'DC': 'District of Columbia',
+            'PR': 'Puerto Rico', 'VI': 'Virgin Islands', 'GU': 'Guam',
+            'AS': 'American Samoa', 'MP': 'Northern Mariana Islands'
+        };
+
+        // Column detection patterns
+        const columnPatterns = {
+            firstName: ['first_name', 'firstname', 'first', 'fname', 'given_name'],
+            lastName: ['last_name', 'lastname', 'last', 'lname', 'surname', 'family_name'],
+            city: ['city', 'town', 'locality'],
+            state: ['state', 'region', 'province', 'state_code', 'addr_state'],
+            zip: ['zip', 'postal', 'postal_code', 'zipcode', 'zip_code', 'postcode'],
+            usHouse: ['congressional_district', 'us_house', 'us_house_district', 'cd', 'congress_district', 'us_district', 'house_district', 'us_rep_district'],
+            stateHouse: ['state_house', 'state_house_district', 'hd', 'house_district', 'state_rep_district', 'state_representative_district', 'assembly_district', 'state_assembly'],
+            stateSenate: ['state_senate', 'state_senate_district', 'sd', 'senate_district', 'state_sen_district', 'state_senator_district']
+        };
+
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const mappingCard = document.getElementById('mappingCard');
+        const previewCard = document.getElementById('previewCard');
+        const generateBtn = document.getElementById('generateBtn');
+        const districtColWrapper = document.getElementById('districtColWrapper');
+        const districtWarning = document.getElementById('districtWarning');
+
+        // Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.csv')) {
+                processFile(file);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                processFile(e.target.files[0]);
+            }
+        });
+
+        // District type change
+        document.querySelectorAll('input[name="districtType"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (csvData.length > 0) {
+                    updateDistrictColumn();
+                    updatePreview();
+                }
+            });
+        });
+
+        // Column mapping changes
+        ['firstNameCol', 'lastNameCol', 'cityCol', 'stateCol', 'zipCol', 'districtCol'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updatePreview);
+        });
+
+        generateBtn.addEventListener('click', generatePDF);
+
+        // CSV Parser
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/);
+            const result = [];
+            let currentRow = [];
+            let inQuotes = false;
+            let currentField = '';
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    const nextChar = line[j + 1];
+
+                    if (inQuotes) {
+                        if (char === '"' && nextChar === '"') {
+                            currentField += '"';
+                            j++;
+                        } else if (char === '"') {
+                            inQuotes = false;
+                        } else {
+                            currentField += char;
+                        }
+                    } else {
+                        if (char === '"') {
+                            inQuotes = true;
+                        } else if (char === ',') {
+                            currentRow.push(currentField.trim());
+                            currentField = '';
+                        } else {
+                            currentField += char;
+                        }
+                    }
+                }
+
+                if (!inQuotes) {
+                    currentRow.push(currentField.trim());
+                    if (currentRow.length > 0 && currentRow.some(cell => cell !== '')) {
+                        result.push(currentRow);
+                    }
+                    currentRow = [];
+                    currentField = '';
+                } else {
+                    currentField += '\n';
+                }
+            }
+
+            return result;
+        }
+
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const parsed = parseCSV(e.target.result);
+                if (parsed.length < 2) {
+                    alert('CSV file appears to be empty or invalid.');
+                    return;
+                }
+                
+                headers = parsed[0];
+                csvData = parsed.slice(1);
+                
+                dropZone.innerHTML = `<div class="icon">✅</div><p><strong>${file.name}</strong><br>${csvData.length} rows loaded</p>`;
+                
+                setupColumnMapping();
+                mappingCard.classList.remove('hidden');
+                previewCard.classList.remove('hidden');
+                updatePreview();
+            };
+            reader.readAsText(file);
+        }
+
+        function detectColumn(patterns) {
+            const lowerHeaders = headers.map(h => h.toLowerCase().trim());
+            for (const pattern of patterns) {
+                const index = lowerHeaders.indexOf(pattern.toLowerCase());
+                if (index !== -1) {
+                    return index;
+                }
+            }
+            // Try partial matching
+            for (const pattern of patterns) {
+                const index = lowerHeaders.findIndex(h => h.includes(pattern.toLowerCase()));
+                if (index !== -1) {
+                    return index;
+                }
+            }
+            return -1;
+        }
+
+        function getDistrictType() {
+            return document.querySelector('input[name="districtType"]:checked').value;
+        }
+
+        function getDistrictPatterns() {
+            const type = getDistrictType();
+            switch (type) {
+                case 'us_house': return columnPatterns.usHouse;
+                case 'state_house': return columnPatterns.stateHouse;
+                case 'state_senate': return columnPatterns.stateSenate;
+                default: return [];
+            }
+        }
+
+        function setupColumnMapping() {
+            const selects = {
+                firstName: document.getElementById('firstNameCol'),
+                lastName: document.getElementById('lastNameCol'),
+                city: document.getElementById('cityCol'),
+                state: document.getElementById('stateCol'),
+                zip: document.getElementById('zipCol'),
+                district: document.getElementById('districtCol')
+            };
+
+            // Populate all selects
+            Object.values(selects).forEach(select => {
+                select.innerHTML = '<option value="-1">(Not mapped)</option>';
+                headers.forEach((header, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = header;
+                    select.appendChild(option);
+                });
+            });
+
+            // Auto-detect and select
+            const detections = {
+                firstName: detectColumn(columnPatterns.firstName),
+                lastName: detectColumn(columnPatterns.lastName),
+                city: detectColumn(columnPatterns.city),
+                state: detectColumn(columnPatterns.state),
+                zip: detectColumn(columnPatterns.zip)
+            };
+
+            Object.entries(detections).forEach(([key, value]) => {
+                selects[key].value = value;
+                const statusEl = document.getElementById(key + 'Status');
+                if (value !== -1) {
+                    statusEl.className = 'auto-detected';
+                    statusEl.textContent = '(auto-detected)';
+                } else {
+                    statusEl.className = 'not-detected';
+                    statusEl.textContent = '(not found)';
+                }
+            });
+
+            updateDistrictColumn();
+        }
+
+        function updateDistrictColumn() {
+            const type = getDistrictType();
+            const districtSelect = document.getElementById('districtCol');
+            const districtStatus = document.getElementById('districtStatus');
+            const districtLabel = document.getElementById('districtLabel');
+
+            if (type === 'us_senate') {
+                districtColWrapper.classList.add('hidden');
+                districtWarning.classList.add('hidden');
+                districtLabel.textContent = 'States';
+            } else {
+                districtColWrapper.classList.remove('hidden');
+                
+                const patterns = getDistrictPatterns();
+                const detected = detectColumn(patterns);
+                districtSelect.value = detected;
+
+                if (detected !== -1) {
+                    districtStatus.className = 'auto-detected';
+                    districtStatus.textContent = '(auto-detected)';
+                    districtWarning.classList.add('hidden');
+                } else {
+                    districtStatus.className = 'not-detected';
+                    districtStatus.textContent = '(not found)';
+                    districtWarning.classList.remove('hidden');
+                }
+
+                districtLabel.textContent = 'Districts';
+            }
+        }
+
+        function getColumnValue(row, selectId) {
+            const index = parseInt(document.getElementById(selectId).value);
+            if (index === -1 || index >= row.length) return '';
+            return row[index] || '';
+        }
+
+        function parseDistrictValue(value, stateValue, type) {
+            if (!value || value.trim() === '') {
+                return null;
+            }
+
+            value = value.trim();
+            
+            // Handle various formats
+            // Format: "NV_01", "NV-01", "NV01"
+            const combinedMatch = value.match(/^([A-Z]{2})[_\-]?(\d+)$/i);
+            if (combinedMatch) {
+                return {
+                    state: combinedMatch[1].toUpperCase(),
+                    district: parseInt(combinedMatch[2], 10)
+                };
+            }
+
+            // Format: "HD-42", "SD-15", "HD42"
+            const prefixedMatch = value.match(/^(?:HD|SD|H|S)[_\-]?(\d+)$/i);
+            if (prefixedMatch) {
+                return {
+                    state: stateValue.toUpperCase(),
+                    district: parseInt(prefixedMatch[1], 10)
+                };
+            }
+
+            // Format: "PA_HD_42", "CA_SD_15"
+            const fullMatch = value.match(/^([A-Z]{2})[_\-](?:HD|SD|H|S)[_\-]?(\d+)$/i);
+            if (fullMatch) {
+                return {
+                    state: fullMatch[1].toUpperCase(),
+                    district: parseInt(fullMatch[2], 10)
+                };
+            }
+
+            // Format: Just a number "42", "15"
+            const numberMatch = value.match(/^(\d+)$/);
+            if (numberMatch) {
+                return {
+                    state: stateValue.toUpperCase(),
+                    district: parseInt(numberMatch[1], 10)
+                };
+            }
+
+            // If we can't parse it, try to use it as-is with the state
+            return {
+                state: stateValue.toUpperCase(),
+                district: value
+            };
+        }
+
+        function formatDistrictHeading(districtKey, type) {
+            if (districtKey === 'UNKNOWN') {
+                return 'Unknown District';
+            }
+
+            // Parse the key (format: "STATE|DISTRICT" or just "STATE" for senate)
+            const parts = districtKey.split('|');
+            const stateAbbr = parts[0];
+            const stateName = stateNames[stateAbbr] || stateAbbr;
+
+            if (type === 'us_senate') {
+                return stateName;
+            }
+
+            const districtNum = parts[1];
+            const typeLabel = type === 'us_house' ? 'Congressional District' :
+                              type === 'state_house' ? 'State House District' :
+                              'State Senate District';
+
+            return `${stateName} — ${typeLabel} ${districtNum}`;
+        }
+
+        function groupByDistrict() {
+            const type = getDistrictType();
+            const groups = {};
+            const unknownGroup = [];
+
+            csvData.forEach(row => {
+                const firstName = getColumnValue(row, 'firstNameCol');
+                const lastName = getColumnValue(row, 'lastNameCol');
+                const city = getColumnValue(row, 'cityCol');
+                const state = getColumnValue(row, 'stateCol');
+                const zip = getColumnValue(row, 'zipCol');
+
+                const signer = { firstName, lastName, city, state, zip };
+
+                if (type === 'us_senate') {
+                    // Group by state
+                    const stateUpper = state.toUpperCase().trim();
+                    if (stateUpper && stateNames[stateUpper]) {
+                        const key = stateUpper;
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(signer);
+                    } else {
+                        unknownGroup.push(signer);
+                    }
+                } else {
+                    // Group by district
+                    const districtValue = getColumnValue(row, 'districtCol');
+                    const parsed = parseDistrictValue(districtValue, state, type);
+
+                    if (parsed && parsed.state && parsed.district) {
+                        const key = `${parsed.state}|${parsed.district}`;
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(signer);
+                    } else {
+                        unknownGroup.push(signer);
+                    }
+                }
+            });
+
+            // Sort keys
+            const sortedKeys = Object.keys(groups).sort((a, b) => {
+                const [stateA, distA] = a.split('|');
+                const [stateB, distB] = b.split('|');
+                
+                if (stateA !== stateB) {
+                    return stateA.localeCompare(stateB);
+                }
+                
+                const numA = parseInt(distA, 10);
+                const numB = parseInt(distB, 10);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
+                }
+                return String(distA).localeCompare(String(distB));
+            });
+
+            // Build result
+            const result = [];
+            sortedKeys.forEach(key => {
+                result.push({
+                    key: key,
+                    heading: formatDistrictHeading(key, type),
+                    signers: groups[key]
+                });
+            });
+
+            // Add unknown at the end
+            if (unknownGroup.length > 0) {
+                result.push({
+                    key: 'UNKNOWN',
+                    heading: 'Unknown District',
+                    signers: unknownGroup
+                });
+            }
+
+            return result;
+        }
+
+        function updatePreview() {
+            const grouped = groupByDistrict();
+            const type = getDistrictType();
+            
+            const totalSigners = csvData.length;
+            const totalDistricts = grouped.filter(g => g.key !== 'UNKNOWN').length;
+            const unknownCount = grouped.find(g => g.key === 'UNKNOWN')?.signers.length || 0;
+
+            document.getElementById('totalSigners').textContent = totalSigners.toLocaleString();
+            document.getElementById('totalDistricts').textContent = totalDistricts.toLocaleString();
+            document.getElementById('unknownCount').textContent = unknownCount.toLocaleString();
+            document.getElementById('districtLabel').textContent = type === 'us_senate' ? 'States' : 'Districts';
+
+            // District preview
+            const previewEl = document.getElementById('districtPreview');
+            previewEl.innerHTML = grouped.map(group => `
+                <div class="district-preview-item">
+                    <span>${group.heading}</span>
+                    <span><strong>${group.signers.length}</strong> signers</span>
+                </div>
+            `).join('');
+
+            generateBtn.disabled = totalSigners === 0;
+        }
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'letter'
+            });
+
+            const grouped = groupByDistrict();
+            const type = getDistrictType();
+
+            // Page dimensions
+            const pageWidth = 215.9;
+            const pageHeight = 279.4;
+            const margin = 15;
+            const contentWidth = pageWidth - (margin * 2);
+            
+            // Grid settings
+            const cols = 3;
+            const cellWidth = contentWidth / cols;
+            const cellPadding = 3;
+            const lineHeight = 4;
+            const cellHeight = lineHeight * 2 + cellPadding * 2;
+            
+            // Heading settings
+            const headingHeight = 10;
+            const headingMarginBottom = 5;
+
+            let currentY = margin;
+            let isFirstPage = true;
+
+            grouped.forEach((group, groupIndex) => {
+                const signers = group.signers;
+                let signerIndex = 0;
+
+                while (signerIndex < signers.length) {
+                    // Check if we need a new page
+                    const needsHeading = signerIndex === 0;
+                    const spaceNeeded = needsHeading ? headingHeight + headingMarginBottom + cellHeight : cellHeight;
+                    
+                    if (currentY + spaceNeeded > pageHeight - margin) {
+                        doc.addPage();
+                        currentY = margin;
+                        isFirstPage = false;
+                    }
+
+                    // Draw heading if this is the start of a group or new page continuation
+                    if (needsHeading || (signerIndex > 0 && currentY === margin)) {
+                        // Heading background
+                        doc.setFillColor(52, 73, 94);
+                        doc.rect(margin, currentY, contentWidth, headingHeight, 'F');
+                        
+                        // Heading text
+                        doc.setTextColor(255, 255, 255);
+                        doc.setFontSize(12);
+                        doc.setFont('helvetica', 'bold');
+                        
+                        let headingText = group.heading;
+                        if (signerIndex > 0) {
+                            headingText += ' (continued)';
+                        }
+                        doc.text(headingText, margin + 5, currentY + 7);
+                        
+                        // Signer count
+                        doc.setFontSize(10);
+                        doc.setFont('helvetica', 'normal');
+                        const countText = `${signers.length} signer${signers.length !== 1 ? 's' : ''}`;
+                        const countWidth = doc.getTextWidth(countText);
+                        doc.text(countText, margin + contentWidth - countWidth - 5, currentY + 7);
+                        
+                        currentY += headingHeight + headingMarginBottom;
+                        doc.setTextColor(0, 0, 0);
+                    }
+
+                    // Calculate how many rows fit on this page
+                    const availableHeight = pageHeight - margin - currentY;
+                    const rowsPerPage = Math.floor(availableHeight / cellHeight);
+                    const signersPerPage = rowsPerPage * cols;
+                    const signersThisPage = Math.min(signersPerPage, signers.length - signerIndex);
+
+                    // Draw signers in grid
+                    for (let i = 0; i < signersThisPage; i++) {
+                        const signer = signers[signerIndex + i];
+                        const col = i % cols;
+                        const row = Math.floor(i / cols);
+                        
+                        const x = margin + (col * cellWidth);
+                        const y = currentY + (row * cellHeight);
+
+                        // Cell border
+                        doc.setDrawColor(200, 200, 200);
+                        doc.rect(x, y, cellWidth, cellHeight);
+
+                        // Name (bold)
+                        doc.setFontSize(9);
+                        doc.setFont('helvetica', 'bold');
+                        const name = `${signer.firstName} ${signer.lastName}`.trim();
+                        const truncatedName = truncateText(doc, name, cellWidth - cellPadding * 2);
+                        doc.text(truncatedName, x + cellPadding, y + cellPadding + 3);
+
+                        // Location
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(8);
+                        let location = '';
+                        if (signer.city && signer.state) {
+                            location = `${signer.city}, ${signer.state}`;
+                        } else if (signer.city) {
+                            location = signer.city;
+                        } else if (signer.state) {
+                            location = signer.state;
+                        }
+                        if (signer.zip) {
+                            location += location ? ` ${signer.zip}` : signer.zip;
+                        }
+                        const truncatedLocation = truncateText(doc, location, cellWidth - cellPadding * 2);
+                        doc.text(truncatedLocation, x + cellPadding, y + cellPadding + 3 + lineHeight);
+                    }
+
+                    signerIndex += signersThisPage;
+                    const rowsDrawn = Math.ceil(signersThisPage / cols);
+                    currentY += rowsDrawn * cellHeight;
+
+                    // Add spacing between groups
+                    if (signerIndex >= signers.length && groupIndex < grouped.length - 1) {
+                        currentY += 5;
+                    }
+                }
+            });
+
+            // Save
+            const typeLabel = type === 'us_house' ? 'US-House' :
+                             type === 'us_senate' ? 'US-Senate' :
+                             type === 'state_house' ? 'State-House' : 'State-Senate';
+            doc.save(`petition-signers-by-${typeLabel}.pdf`);
+        }
+
+        function truncateText(doc, text, maxWidth) {
+            if (doc.getTextWidth(text) <= maxWidth) {
+                return text;
+            }
+            while (text.length > 0 && doc.getTextWidth(text + '…') > maxWidth) {
+                text = text.slice(0, -1);
+            }
+            return text + '…';
+        }
+    </script>
+</body>
+</html>
