@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Petition Signer PDF Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      color: #1a1a1a;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 1rem;
+    }
+    .privacy-banner {
+      background: #ecfdf5;
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .privacy-banner h2 {
+      font-size: 0.875rem;
+      color: #065f46;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .privacy-banner p {
+      font-size: 0.8rem;
+      color: #047857;
+      line-height: 1.5;
+    }
+    .privacy-banner .icon {
+      font-size: 1.25rem;
+    }
+    .dropzone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 3rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+    .dropzone svg {
+      width: 48px;
+      height: 48px;
+      color: #999;
+      margin-bottom: 1rem;
+    }
+    .dropzone p {
+      color: #666;
+      font-size: 1.1rem;
+    }
+    #fileInput { display: none; }
+    .status {
+      text-align: center;
+      margin-top: 1rem;
+      font-weight: 500;
+      color: #333;
+    }
+    .status.error {
+      color: #dc2626;
+    }
+    .panel {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .panel h2 {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      color: #333;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .field label {
+      display: block;
+      font-size: 0.875rem;
+      color: #666;
+      margin-bottom: 0.25rem;
+    }
+    .field select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+    .preview {
+      margin-top: 1.5rem;
+    }
+    .preview h3 {
+      font-size: 0.875rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    .preview-cell {
+      border: 1px solid #333;
+      padding: 0.5rem;
+      font-size: 0.75rem;
+    }
+    .preview-cell .name {
+      font-weight: bold;
+    }
+    button {
+      width: 100%;
+      margin-top: 1.5rem;
+      padding: 0.875rem;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .hidden { display: none; }
+    .offline-note {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: #fef3c7;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: #92400e;
+    }
+    .offline-note a {
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Petition Signer PDF Generator</h1>
+    <p class="subtitle">Convert CSV exports to formatted petition PDFs</p>
+    
+    <div class="privacy-banner">
+      <h2><span class="icon">🔒</span> Your data stays private</h2>
+      <p>
+        <strong>All processing happens in your browser.</strong> Your CSV data is never uploaded to any server. 
+        For extra confidence, you can disconnect from the internet before loading your file — 
+        the tool will work completely offline once this page has loaded.
+      </p>
+    </div>
+    
+    <div class="dropzone" id="dropzone">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+      </svg>
+      <p>Drop CSV here or click to browse</p>
+      <input type="file" id="fileInput" accept=".csv">
+    </div>
+    
+    <p class="status" id="status"></p>
+    
+    <div class="panel hidden" id="mappingPanel">
+      <h2>Column Mapping</h2>
+      <div class="grid">
+        <div class="field">
+          <label>First Name</label>
+          <select id="firstName"></select>
+        </div>
+        <div class="field">
+          <label>Last Name</label>
+          <select id="lastName"></select>
+        </div>
+        <div class="field">
+          <label>City</label>
+          <select id="city"></select>
+        </div>
+        <div class="field">
+          <label>State</label>
+          <select id="state"></select>
+        </div>
+        <div class="field">
+          <label>ZIP</label>
+          <select id="zip"></select>
+        </div>
+      </div>
+      
+      <div class="preview">
+        <h3>Preview (first 3 signers)</h3>
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+      
+      <button id="generateBtn">Generate PDF</button>
+      
+      <div class="offline-note">
+        💡 <strong>Tip:</strong> Bookmark this page for easy access. See the 
+        <a href="https://github.com/YOUR_USERNAME/petition-pdf-generator#fully-offline-version" target="_blank">README</a> 
+        for instructions on running completely offline.
+      </div>
+    </div>
+  </div>
+
+  <!-- jsPDF library - loaded from CDN. See README for offline instructions. -->
+  <script src="https://unpkg.com/jspdf@3.0.4/dist/jspdf.umd.min.js"></script>
+  
+  <script>
+    let csvData = [];
+    let headers = [];
+    
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const status = document.getElementById('status');
+    const mappingPanel = document.getElementById('mappingPanel');
+    const previewGrid = document.getElementById('previewGrid');
+    const generateBtn = document.getElementById('generateBtn');
+    
+    const columnSelects = {
+      firstName: document.getElementById('firstName'),
+      lastName: document.getElementById('lastName'),
+      city: document.getElementById('city'),
+      state: document.getElementById('state'),
+      zip: document.getElementById('zip')
+    };
+    
+    // Column name patterns for auto-detection (ActionKit and common formats)
+    const columnPatterns = {
+      firstName: ['first_name', 'firstname', 'first', 'fname'],
+      lastName: ['last_name', 'lastname', 'last', 'lname', 'surname'],
+      city: ['city', 'town'],
+      state: ['state', 'region', 'province'],
+      zip: ['zip', 'postal', 'postal_code', 'zipcode', 'zip_code']
+    };
+    
+    // Parse CSV with proper quote handling
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headerLine = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      const rows = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (const char of lines[i]) {
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.trim());
+        
+        if (values.length === headerLine.length) {
+          const row = {};
+          headerLine.forEach((h, idx) => {
+            row[h] = values[idx]?.replace(/^["']|["']$/g, '') || '';
+          });
+          rows.push(row);
+        }
+      }
+      
+      return { headers: headerLine, rows };
+    }
+    
+    // Find matching column
+    function findColumn(headers, patterns) {
+      for (const pattern of patterns) {
+        const found = headers.find(h => h === pattern || h.includes(pattern));
+        if (found) return found;
+      }
+      return '';
+    }
+    
+    // Populate select dropdowns
+    function populateSelects() {
+      for (const key in columnSelects) {
+        const select = columnSelects[key];
+        select.innerHTML = '<option value="">-- Select --</option>';
+        headers.forEach(h => {
+          const option = document.createElement('option');
+          option.value = h;
+          option.textContent = h;
+          select.appendChild(option);
+        });
+        
+        // Auto-select based on patterns
+        const autoMatch = findColumn(headers, columnPatterns[key]);
+        if (autoMatch) select.value = autoMatch;
+        
+        select.addEventListener('change', updatePreview);
+      }
+    }
+    
+    // Update preview
+    function updatePreview() {
+      previewGrid.innerHTML = '';
+      
+      csvData.slice(0, 3).forEach(row => {
+        const firstName = row[columnSelects.firstName.value] || '';
+        const lastName = row[columnSelects.lastName.value] || '';
+        const city = row[columnSelects.city.value] || '';
+        const state = row[columnSelects.state.value] || '';
+        const zip = row[columnSelects.zip.value] || '';
+        
+        const cell = document.createElement('div');
+        cell.className = 'preview-cell';
+        cell.innerHTML = `
+          <div class="name">${firstName} ${lastName}</div>
+          <div>${city}, ${state} ${zip}</div>
+        `;
+        previewGrid.appendChild(cell);
+      });
+    }
+    
+    // Handle file
+    function handleFile(file) {
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const result = parseCSV(e.target.result);
+          headers = result.headers;
+          csvData = result.rows;
+          
+          status.textContent = `Loaded ${csvData.length.toLocaleString()} signers`;
+          status.className = 'status';
+          mappingPanel.classList.remove('hidden');
+          
+          populateSelects();
+          updatePreview();
+        } catch (err) {
+          status.textContent = 'Error parsing CSV: ' + err.message;
+          status.className = 'status error';
+        }
+      };
+      reader.readAsText(file);
+    }
+    
+    // Event listeners
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && (file.name.endsWith('.csv') || file.type === 'text/csv')) {
+        handleFile(file);
+      } else {
+        status.textContent = 'Please drop a CSV file';
+        status.className = 'status error';
+      }
+    });
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+    
+    // Generate PDF
+    generateBtn.addEventListener('click', () => {
+      if (!csvData.length) {
+        status.textContent = 'No data to generate';
+        status.className = 'status error';
+        return;
+      }
+      
+      // Check if jsPDF is loaded
+      if (typeof window.jspdf === 'undefined') {
+        status.textContent = 'PDF library not loaded. Please check your internet connection and refresh.';
+        status.className = 'status error';
+        return;
+      }
+      
+      status.textContent = 'Generating PDF...';
+      status.className = 'status';
+      generateBtn.disabled = true;
+      
+      // Use setTimeout to allow UI to update
+      setTimeout(() => {
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'pt',
+            format: 'letter'
+          });
+          
+          const pageWidth = doc.internal.pageSize.getWidth();
+          const pageHeight = doc.internal.pageSize.getHeight();
+          const margin = 36;
+          const colWidth = (pageWidth - 2 * margin) / 3;
+          const cellPadding = 6;
+          const lineHeight = 14;
+          const cellHeight = lineHeight * 2 + cellPadding * 2;
+          
+          const usableHeight = pageHeight - 2 * margin;
+          const rowsPerPage = Math.floor(usableHeight / cellHeight);
+          const cellsPerPage = rowsPerPage * 3;
+          
+          let currentPage = 0;
+          
+          csvData.forEach((row, index) => {
+            const pageIndex = Math.floor(index / cellsPerPage);
+            const positionOnPage = index % cellsPerPage;
+            const rowOnPage = Math.floor(positionOnPage / 3);
+            const colOnPage = positionOnPage % 3;
+            
+            if (pageIndex > currentPage) {
+              doc.addPage();
+              currentPage = pageIndex;
+            }
+            
+            const x = margin + colOnPage * colWidth;
+            const y = margin + rowOnPage * cellHeight;
+            
+            doc.setDrawColor(0);
+            doc.setLineWidth(0.5);
+            doc.rect(x, y, colWidth, cellHeight);
+            
+            const firstName = row[columnSelects.firstName.value] || '';
+            const lastName = row[columnSelects.lastName.value] || '';
+            const name = `${firstName} ${lastName}`.trim();
+            
+            const city = row[columnSelects.city.value] || '';
+            const state = row[columnSelects.state.value] || '';
+            const zip = row[columnSelects.zip.value] || '';
+            const location = [city, `${state} ${zip}`.trim()].filter(Boolean).join(', ');
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            
+            const maxTextWidth = colWidth - cellPadding * 2;
+            let displayName = name;
+            while (doc.getTextWidth(displayName) > maxTextWidth && displayName.length > 0) {
+              displayName = displayName.slice(0, -1);
+            }
+            
+            doc.text(displayName, x + cellPadding, y + cellPadding + lineHeight - 2);
+            
+            doc.setFont('helvetica', 'normal');
+            let displayLocation = location;
+            while (doc.getTextWidth(displayLocation) > maxTextWidth && displayLocation.length > 0) {
+              displayLocation = displayLocation.slice(0, -1);
+            }
+            doc.text(displayLocation, x + cellPadding, y + cellPadding + lineHeight * 2 - 2);
+          });
+          
+          const totalPages = Math.ceil(csvData.length / cellsPerPage);
+          doc.save(`petition-signers-${csvData.length}.pdf`);
+          
+          status.textContent = `Generated PDF with ${csvData.length.toLocaleString()} signers across ${totalPages} page${totalPages > 1 ? 's' : ''}`;
+          status.className = 'status';
+        } catch (err) {
+          status.textContent = 'Error generating PDF: ' + err.message;
+          status.className = 'status error';
+        }
+        generateBtn.disabled = false;
+      }, 50);
+    });
+    
+    // Check if jsPDF loaded
+    window.addEventListener('load', () => {
+      if (typeof window.jspdf === 'undefined') {
+        status.textContent = 'Warning: PDF library failed to load. Check your internet connection.';
+        status.className = 'status error';
+      }
+    });
+  </script>
+</body>
+</html>
