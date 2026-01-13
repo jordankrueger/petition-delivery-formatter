@@ -1,3 +1,12 @@
+![HTML](https://img.shields.io/badge/HTML-5-E34F26.svg?logo=html5&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6-F7DF1E.svg?logo=javascript&logoColor=black)
+![Works Offline](https://img.shields.io/badge/Works-Offline-9cf.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![No Server Required](https://img.shields.io/badge/Server-None%20Required-green.svg)
+![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-brightgreen.svg)
+![Made for Nonprofits](https://img.shields.io/badge/Made%20for-Nonprofits-orange.svg)
+![Vibecoded with Claude](https://img.shields.io/badge/Vibecoded%20with-Claude-cc785c.svg)
+
 # Petition Delivery PDF Generators
 
 A collection of browser-based tools for converting CSV exports from ActionKit, EveryAction, Action Network, and other activism platforms into formatted PDF documents suitable for petition deliveries.
