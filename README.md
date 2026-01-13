@@ -1,7 +1,7 @@
 ![HTML](https://img.shields.io/badge/HTML-5-E34F26.svg?logo=html5&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6-F7DF1E.svg?logo=javascript&logoColor=black)
 ![Works Offline](https://img.shields.io/badge/Works-Offline-9cf.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 ![No Server Required](https://img.shields.io/badge/Server-None%20Required-green.svg)
 ![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-brightgreen.svg)
 ![Made for Nonprofits](https://img.shields.io/badge/Made%20for-Nonprofits-orange.svg)
